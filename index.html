@@ -1,0 +1,1949 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Utility Performance Smart Dashboard</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --bg-primary: #020617;
+            --bg-secondary: #0f172a;
+            --bg-card: rgba(30, 41, 59, 0.45);
+            --border-card: rgba(255, 255, 255, 0.06);
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --text-muted: #64748b;
+            
+            --cooling-primary: #3b82f6;
+            --cooling-glow: rgba(59, 130, 246, 0.15);
+            --air-primary: #10b981;
+            --air-glow: rgba(16, 185, 129, 0.15);
+            --refrig-primary: #f59e0b;
+            --refrig-glow: rgba(245, 158, 11, 0.15);
+            
+            --accent-active: var(--cooling-primary);
+            --accent-glow: var(--cooling-glow);
+            
+            --card-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        [data-theme="light"] {
+            --bg-primary: #f1f5f9;
+            --bg-secondary: #ffffff;
+            --bg-card: rgba(248, 250, 252, 0.8);
+            --border-card: rgba(15, 23, 42, 0.08);
+            --text-primary: #0f172a;
+            --text-secondary: #475569;
+            --text-muted: #94a3b8;
+            
+            --cooling-primary: #2563eb;
+            --cooling-glow: rgba(37, 99, 235, 0.1);
+            --air-primary: #059669;
+            --air-glow: rgba(5, 150, 105, 0.1);
+            --refrig-primary: #d97706;
+            --refrig-glow: rgba(217, 119, 6, 0.1);
+            
+            --card-shadow: 0 4px 20px 0 rgba(15, 23, 42, 0.05);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-primary);
+            background-image: radial-gradient(circle at top left, var(--bg-secondary) 0%, var(--bg-primary) 80%);
+            color: var(--text-primary);
+            min-height: 100vh;
+            display: flex;
+            transition: background-color 0.5s ease;
+        }
+
+        /* Sidebar Styling */
+        .sidebar {
+            width: 280px;
+            background: rgba(15, 23, 42, 0.6);
+            backdrop-filter: blur(20px);
+            border-right: 1px solid var(--border-card);
+            padding: 30px 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 30px;
+            position: fixed;
+            height: 100vh;
+            z-index: 100;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.25rem;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+            background: linear-gradient(135deg, #3b82f6, #10b981);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            padding-bottom: 20px;
+            border-bottom: 1px solid var(--border-card);
+        }
+
+        .brand i {
+            background: linear-gradient(135deg, #3b82f6, #10b981);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-size: 1.6rem;
+        }
+
+        .nav-menu {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .nav-item {
+            width: 100%;
+        }
+
+        .nav-link {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            padding: 14px 18px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            border-radius: 12px;
+            font-weight: 500;
+            font-size: 0.95rem;
+            cursor: pointer;
+            transition: var(--transition);
+            border: 1px solid transparent;
+        }
+
+        .nav-link:hover {
+            background: rgba(255, 255, 255, 0.03);
+            color: var(--text-primary);
+            transform: translateX(4px);
+        }
+
+        .nav-link.active[data-target="cooling_pump"] {
+            background: var(--cooling-glow);
+            color: var(--cooling-primary);
+            border-color: rgba(59, 130, 246, 0.2);
+            font-weight: 600;
+        }
+
+        .nav-link.active[data-target="plant_air"] {
+            background: var(--air-glow);
+            color: var(--air-primary);
+            border-color: rgba(16, 185, 129, 0.2);
+            font-weight: 600;
+        }
+
+        .nav-link.active[data-target="refrig_unit"] {
+            background: var(--refrig-glow);
+            color: var(--refrig-primary);
+            border-color: rgba(245, 158, 11, 0.2);
+            font-weight: 600;
+        }
+
+        .sidebar-footer {
+            margin-top: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        /* Theme Toggle */
+        .theme-toggle-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            width: 100%;
+            padding: 12px;
+            border-radius: 10px;
+            border: 1px solid var(--border-card);
+            background: transparent;
+            color: var(--text-primary);
+            cursor: pointer;
+            font-weight: 500;
+            transition: var(--transition);
+        }
+
+        .theme-toggle-btn:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        /* Main Content Container */
+        .main-content {
+            margin-left: 280px;
+            flex: 1;
+            padding: 40px;
+            max-width: 1400px;
+            display: flex;
+            flex-direction: column;
+            gap: 30px;
+        }
+
+        /* Header Area */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+
+        .header-title h1 {
+            font-family: 'Outfit', sans-serif;
+            font-size: 2.2rem;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+            margin-bottom: 5px;
+        }
+
+        .header-title p {
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+        }
+
+        .controls-panel {
+            display: flex;
+            align-items: center;
+            gap: 24px;
+            background: var(--bg-card);
+            backdrop-filter: blur(12px);
+            padding: 15px 25px;
+            border-radius: 16px;
+            border: 1px solid var(--border-card);
+            box-shadow: var(--card-shadow);
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .control-group label {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-weight: 700;
+            color: var(--text-muted);
+        }
+
+        .styled-select {
+            background: rgba(15, 23, 42, 0.8);
+            color: var(--text-primary);
+            border: 1px solid var(--border-card);
+            padding: 10px 18px;
+            border-radius: 10px;
+            font-weight: 500;
+            cursor: pointer;
+            outline: none;
+            min-width: 150px;
+            transition: var(--transition);
+        }
+
+        .styled-select:hover {
+            border-color: var(--accent-active);
+        }
+
+        /* Slider Panel */
+        .slider-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .rate-slider {
+            -webkit-appearance: none;
+            width: 150px;
+            height: 6px;
+            border-radius: 5px;
+            background: var(--border-card);
+            outline: none;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .rate-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: var(--accent-active);
+            box-shadow: 0 0 10px var(--accent-active);
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .rate-value {
+            font-family: 'Outfit', sans-serif;
+            font-weight: 700;
+            color: var(--text-primary);
+            min-width: 80px;
+        }
+
+        /* Dynamic Grid Layout */
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 20px;
+        }
+
+        .card {
+            background: var(--bg-card);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--border-card);
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: var(--card-shadow);
+            transition: var(--transition);
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            border-color: rgba(255, 255, 255, 0.12);
+        }
+
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 100%;
+            background: var(--accent-active);
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: var(--text-secondary);
+        }
+
+        .card-title {
+            font-size: 0.85rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .card-icon-bg {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            background: var(--accent-glow);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--accent-active);
+            font-size: 1.1rem;
+        }
+
+        .card-value {
+            font-family: 'Outfit', sans-serif;
+            font-size: 2.2rem;
+            font-weight: 800;
+            color: var(--text-primary);
+            line-height: 1;
+            margin-top: 5px;
+        }
+
+        .card-subtext {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+
+        /* Recommendation Banner */
+        .recommendation-box {
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.08) 0%, rgba(59, 130, 246, 0.08) 100%);
+            border: 1px solid rgba(16, 185, 129, 0.2);
+            border-radius: 16px;
+            padding: 30px;
+            box-shadow: var(--card-shadow);
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .recommendation-box::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 6px;
+            height: 100%;
+            background: linear-gradient(to bottom, #10b981, #3b82f6);
+        }
+
+        .rec-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: #10b981;
+        }
+
+        .rec-header i {
+            font-size: 1.5rem;
+            animation: pulse 2s infinite;
+        }
+
+        .rec-body {
+            font-size: 0.95rem;
+            line-height: 1.6;
+            color: var(--text-secondary);
+        }
+
+        .rec-body strong {
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+
+        .rec-savings-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-top: 10px;
+        }
+
+        .rec-saving-card {
+            background: rgba(15, 23, 42, 0.4);
+            border: 1px solid var(--border-card);
+            border-radius: 12px;
+            padding: 18px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .rec-saving-card label {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            font-weight: 600;
+        }
+
+        .rec-saving-val {
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.5rem;
+            font-weight: 800;
+            color: #10b981;
+        }
+
+        /* Chart Grid Layout */
+        .chart-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 24px;
+        }
+
+        @media (max-width: 1024px) {
+            .chart-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .chart-card {
+            background: var(--bg-card);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--border-card);
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: var(--card-shadow);
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            min-height: 380px;
+        }
+
+        .chart-title {
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.1rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .chart-canvas-container {
+            position: relative;
+            flex: 1;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* Table Card Styling */
+        .table-card {
+            background: var(--bg-card);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--border-card);
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: var(--card-shadow);
+            overflow: hidden;
+        }
+
+        .table-title {
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 20px;
+        }
+
+        .table-wrapper {
+            overflow-x: auto;
+            border-radius: 12px;
+            border: 1px solid var(--border-card);
+        }
+
+        .styled-table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+            font-size: 0.9rem;
+        }
+
+        .styled-table th {
+            background: rgba(15, 23, 42, 0.6);
+            color: var(--text-secondary);
+            font-weight: 600;
+            padding: 14px 18px;
+            text-transform: uppercase;
+            font-size: 0.75rem;
+            letter-spacing: 0.5px;
+            border-bottom: 1px solid var(--border-card);
+        }
+
+        .styled-table td {
+            padding: 14px 18px;
+            color: var(--text-secondary);
+            border-bottom: 1px solid var(--border-card);
+            transition: var(--transition);
+        }
+
+        .styled-table tbody tr:hover td {
+            background: rgba(255, 255, 255, 0.02);
+            color: var(--text-primary);
+        }
+
+        .styled-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .highlight-text {
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        /* Utility classes */
+        .flex-row-center {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.08); }
+            100% { transform: scale(1); }
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            body {
+                flex-direction: column;
+            }
+            .sidebar {
+                width: 100%;
+                height: auto;
+                position: relative;
+                border-right: none;
+                border-bottom: 1px solid var(--border-card);
+                padding: 20px;
+                gap: 15px;
+            }
+            .sidebar-footer {
+                display: none;
+            }
+            .main-content {
+                margin-left: 0;
+                padding: 20px;
+            }
+            .header {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .controls-panel {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Sidebar Navigation -->
+    <div class="sidebar">
+        <div class="brand">
+            <i class="fa-solid fa-chart-line"></i>
+            <span>Smart Dashboard</span>
+        </div>
+        <ul class="nav-menu">
+            <li class="nav-item">
+                <a class="nav-link active" data-target="cooling_pump">
+                    <i class="fa-solid fa-water"></i>
+                    <span>Cooling Pump</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" data-target="plant_air">
+                    <i class="fa-solid fa-wind"></i>
+                    <span>Plant Air</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" data-target="refrig_unit">
+                    <i class="fa-solid fa-snowflake"></i>
+                    <span>Refrig. Unit</span>
+                </a>
+            </li>
+        </ul>
+        <div class="sidebar-footer">
+            <button class="theme-toggle-btn" id="theme-toggle">
+                <i class="fa-solid fa-sun"></i>
+                <span id="theme-text">Light Mode</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <!-- Top Header Area -->
+        <div class="header">
+            <div class="header-title">
+                <h1 id="page-title">Cooling Pump Performance</h1>
+                <p id="page-subtitle">Analysis and optimization opportunities for cooling water pumps.</p>
+            </div>
+            
+            <div class="controls-panel">
+                <!-- Month Filter -->
+                <div class="control-group">
+                    <label for="month-select">Select Month</label>
+                    <select id="month-select" class="styled-select">
+                        <option value="2026-01">January 2026</option>
+                        <option value="2026-02">February 2026</option>
+                        <option value="2026-03">March 2026</option>
+                        <option value="2026-04">April 2026</option>
+                        <option value="2026-05">May 2026</option>
+                        <option value="2026-06">June 2026</option>
+                        <option value="2026-07">July 2026</option>
+                    </select>
+                </div>
+                
+                <!-- Cost Rate Input (Only shown when savings are relevant) -->
+                <div class="control-group" id="rate-control-group">
+                    <label for="cost-slider">Elec. Rate (ค่าไฟ)</label>
+                    <div class="slider-wrapper">
+                        <input type="range" id="cost-slider" class="rate-slider" min="1.0" max="10.0" step="0.1" value="4.0">
+                        <span class="rate-value" id="rate-val">4.0 THB/kWh</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- KPIs Cards -->
+        <div class="kpi-grid" id="kpi-container">
+            <!-- Dynamic KPIs -->
+        </div>
+
+        <!-- Recommendation Banner -->
+        <div class="recommendation-box" id="rec-container">
+            <!-- Dynamic Recommendations -->
+        </div>
+
+        <!-- Charts Section -->
+        <div class="chart-grid" id="charts-container">
+            <div class="chart-card">
+                <div class="chart-title">
+                    <span id="trend-chart-title">Monthly Trend</span>
+                    <i class="fa-solid fa-chart-area"></i>
+                </div>
+                <div class="chart-canvas-container">
+                    <canvas id="trendChart"></canvas>
+                </div>
+            </div>
+            <div class="chart-card" id="breakdown-chart-card">
+                <div class="chart-title">
+                    <span>Config Runtime Share</span>
+                    <i class="fa-solid fa-chart-pie"></i>
+                </div>
+                <div class="chart-canvas-container">
+                    <canvas id="breakdownChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Table Data Section -->
+        <div class="table-card" id="table-container">
+            <div class="table-title" id="table-card-title">Configuration Aggregates (This Month)</div>
+            <div class="table-wrapper">
+                <table class="styled-table" id="data-table">
+                    <!-- Dynamic Table Contents -->
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Data & Script -->
+    <script>
+        // Data injected from python
+        const DASHBOARD_DATA = {
+  "2026-01": {
+    "cooling_pump": {
+      "run_config": "AB",
+      "avg_power": 1203.409861929014,
+      "avg_eff": 0.8799348805702485,
+      "saving_kwh": -644.306506676442,
+      "saving_cost": -1939.3625850960905,
+      "conf_pct": {
+        "AB": 99.59677419354838,
+        "AC": 0.2688172043010753,
+        "ABC": 0.13440860215053765
+      },
+      "breakdown": {
+        "AB": {
+          "hours": 741,
+          "avg_power": 1202.6958618471754,
+          "avg_eff": 0.8803832821140615,
+          "avg_flow": 7716.265470585842
+        },
+        "ABC": {
+          "hours": 1,
+          "avg_power": 1772.0533904299523,
+          "avg_eff": 0.6035933245660292,
+          "avg_flow": 7412.406787872314
+        },
+        "AC": {
+          "hours": 2,
+          "avg_power": 1183.625127999698,
+          "avg_eff": 0.8519728865896223,
+          "avg_flow": 7237.532445907593
+        }
+      },
+      "active_hours": 744
+    },
+    "plant_air": {
+      "run_config": "B",
+      "avg_power": 262.8402777952655,
+      "avg_eff": 0.6720620067576502,
+      "saving_kwh": -15891.500915485341,
+      "saving_cost": -47833.41775561088,
+      "conf_pct": {
+        "B": 99.59677419354838,
+        "A": 0.2688172043010753,
+        "AB": 0.13440860215053765
+      },
+      "breakdown": {
+        "A": {
+          "hours": 2,
+          "avg_power": 252.5203133733642,
+          "avg_eff": 0.6453728164275454,
+          "avg_flow": 1188.6379716396332
+        },
+        "AB": {
+          "hours": 1,
+          "avg_power": 539.6067948237196,
+          "avg_eff": 0.35674054986318093,
+          "avg_flow": 1403.9639294445515
+        },
+        "B": {
+          "hours": 741,
+          "avg_power": 262.49462787868697,
+          "avg_eff": 0.672559577388628,
+          "avg_flow": 1286.7568809602374
+        }
+      },
+      "active_hours": 744
+    },
+    "refrig_unit": {
+      "avg_power": 240.03487194541472,
+      "avg_cooling_power": 921.3392044226462,
+      "avg_cop": 3.855548514510328,
+      "active_hours": 744
+    }
+  },
+  "2026-02": {
+    "cooling_pump": {
+      "run_config": "AC",
+      "avg_power": 1182.6614580327748,
+      "avg_eff": 0.8589894582387387,
+      "saving_kwh": -21670.55810679003,
+      "saving_cost": -65228.37990143799,
+      "conf_pct": {
+        "AC": 100.0
+      },
+      "breakdown": {
+        "AC": {
+          "hours": 672,
+          "avg_power": 1182.6614580327748,
+          "avg_eff": 0.8589894582387387,
+          "avg_flow": 7353.649486024819
+        }
+      },
+      "active_hours": 672
+    },
+    "plant_air": {
+      "run_config": "A",
+      "avg_power": 254.9431969566584,
+      "avg_eff": 0.7254898678420858,
+      "saving_kwh": -1522.786299982545,
+      "saving_cost": -4583.58676294746,
+      "conf_pct": {
+        "A": 93.00595238095238,
+        "B": 6.547619047619048,
+        "AB": 0.4464285714285714
+      },
+      "breakdown": {
+        "A": {
+          "hours": 625,
+          "avg_power": 253.23063320565257,
+          "avg_eff": 0.7299791815646088,
+          "avg_flow": 1348.2619175569116
+        },
+        "AB": {
+          "hours": 3,
+          "avg_power": 524.5231697058689,
+          "avg_eff": 0.37727488665003645,
+          "avg_flow": 1409.8502728765209
+        },
+        "B": {
+          "hours": 44,
+          "avg_power": 260.88893391418236,
+          "avg_eff": 0.685463137546614,
+          "avg_flow": 1304.3731261678886
+        }
+      },
+      "active_hours": 672
+    },
+    "refrig_unit": {
+      "avg_power": 263.8958249745218,
+      "avg_cooling_power": 934.39959782532,
+      "avg_cop": 3.5536400995039927,
+      "active_hours": 672
+    }
+  },
+  "2026-03": {
+    "cooling_pump": {
+      "run_config": "AB",
+      "avg_power": 1201.780988787213,
+      "avg_eff": 0.8833129633955447,
+      "saving_kwh": -530.2324191304083,
+      "saving_cost": -1595.999581582529,
+      "conf_pct": {
+        "AB": 99.73118279569893,
+        "AC": 0.13440860215053765,
+        "ABC": 0.13440860215053765
+      },
+      "breakdown": {
+        "AB": {
+          "hours": 742,
+          "avg_power": 1200.9881419030082,
+          "avg_eff": 0.8836731904860184,
+          "avg_flow": 7765.891974979976
+        },
+        "ABC": {
+          "hours": 1,
+          "avg_power": 1795.5783310202667,
+          "avg_eff": 0.6344659667112372,
+          "avg_flow": 7916.982398986816
+        },
+        "AC": {
+          "hours": 1,
+          "avg_power": 1196.2760346339169,
+          "avg_eff": 0.8648714589482163,
+          "avg_flow": 7641.924201965332
+        }
+      },
+      "active_hours": 744
+    },
+    "plant_air": {
+      "run_config": "B",
+      "avg_power": 262.07185040806877,
+      "avg_eff": 0.6962830637058918,
+      "saving_kwh": -12557.830429815089,
+      "saving_cost": -37799.069593743414,
+      "conf_pct": {
+        "B": 99.86559139784946,
+        "AB": 0.13440860215053765
+      },
+      "breakdown": {
+        "AB": {
+          "hours": 1,
+          "avg_power": 515.5388664171373,
+          "avg_eff": 0.32019600565475587,
+          "avg_flow": 1203.9359563365579
+        },
+        "B": {
+          "hours": 743,
+          "avg_power": 261.7307104134401,
+          "avg_eff": 0.6967892374044798,
+          "avg_flow": 1329.832003348042
+        }
+      },
+      "active_hours": 744
+    },
+    "refrig_unit": {
+      "avg_power": 269.81623010497526,
+      "avg_cooling_power": 972.2288388366255,
+      "avg_cop": 3.6142830349628796,
+      "active_hours": 744
+    }
+  },
+  "2026-04": {
+    "cooling_pump": {
+      "run_config": "AB",
+      "avg_power": 1196.3329783246975,
+      "avg_eff": 0.8792754448406216,
+      "saving_kwh": 0.0,
+      "saving_cost": 0.0,
+      "conf_pct": {
+        "AB": 100.0
+      },
+      "breakdown": {
+        "AB": {
+          "hours": 720,
+          "avg_power": 1196.3329783246975,
+          "avg_eff": 0.8792754448406216,
+          "avg_flow": 7661.953902228591
+        }
+      },
+      "active_hours": 720
+    },
+    "plant_air": {
+      "run_config": "B",
+      "avg_power": 265.65733108662874,
+      "avg_eff": 0.6477864892884388,
+      "saving_kwh": -21556.737002043992,
+      "saving_cost": -64885.77837615241,
+      "conf_pct": {
+        "B": 100.0
+      },
+      "breakdown": {
+        "B": {
+          "hours": 720,
+          "avg_power": 265.65733108662874,
+          "avg_eff": 0.6477864892884388,
+          "avg_flow": 1255.0131114821675
+        }
+      },
+      "active_hours": 720
+    },
+    "refrig_unit": {
+      "avg_power": 265.9297559433999,
+      "avg_cooling_power": 985.8173837347331,
+      "avg_cop": 3.7113267871297273,
+      "active_hours": 720
+    }
+  },
+  "2026-05": {
+    "cooling_pump": {
+      "run_config": "AB",
+      "avg_power": 1206.7657071795468,
+      "avg_eff": 0.8882915681511722,
+      "saving_kwh": -487.366533041647,
+      "saving_cost": -1466.9732644553574,
+      "conf_pct": {
+        "AB": 99.59677419354838,
+        "BC": 0.2688172043010753,
+        "ABC": 0.13440860215053765
+      },
+      "breakdown": {
+        "AB": {
+          "hours": 741,
+          "avg_power": 1206.1483982549983,
+          "avg_eff": 0.8886615682829644,
+          "avg_flow": 7907.705710597688
+        },
+        "ABC": {
+          "hours": 1,
+          "avg_power": 1761.8356007523248,
+          "avg_eff": 0.6662536767429219,
+          "avg_flow": 7641.861221313477
+        },
+        "BC": {
+          "hours": 2,
+          "avg_power": 1157.9437169383657,
+          "avg_eff": 0.8622254650262575,
+          "avg_flow": 7258.635739326477
+        }
+      },
+      "active_hours": 744
+    },
+    "plant_air": {
+      "run_config": "B",
+      "avg_power": 259.99471219533086,
+      "avg_eff": 0.6940700906776478,
+      "saving_kwh": -12031.216415386705,
+      "saving_cost": -36213.96141031398,
+      "conf_pct": {
+        "B": 99.59677419354838,
+        "A": 0.2688172043010753,
+        "AB": 0.13440860215053765
+      },
+      "breakdown": {
+        "A": {
+          "hours": 2,
+          "avg_power": 253.97592579968773,
+          "avg_eff": 0.7133411396496203,
+          "avg_flow": 1321.3490880206227
+        },
+        "AB": {
+          "hours": 1,
+          "avg_power": 532.3917484449428,
+          "avg_eff": 0.33725767600231893,
+          "avg_flow": 1309.541366405785
+        },
+        "B": {
+          "hours": 741,
+          "avg_power": 259.6433498964667,
+          "avg_eff": 0.694499605275126,
+          "avg_flow": 1315.1706139076346
+        }
+      },
+      "active_hours": 744
+    },
+    "refrig_unit": {
+      "avg_power": 279.3115694141108,
+      "avg_cooling_power": 1006.5541315236337,
+      "avg_cop": 3.6126298230335356,
+      "active_hours": 744
+    }
+  },
+  "2026-06": {
+    "cooling_pump": {
+      "run_config": "BC",
+      "avg_power": 1165.7363386692853,
+      "avg_eff": 0.8691667916954761,
+      "saving_kwh": -13787.145829559062,
+      "saving_cost": -41499.30894697277,
+      "conf_pct": {
+        "BC": 100.0
+      },
+      "breakdown": {
+        "BC": {
+          "hours": 720,
+          "avg_power": 1165.7363386692853,
+          "avg_eff": 0.8691667916954761,
+          "avg_flow": 7477.997731876042
+        }
+      },
+      "active_hours": 720
+    },
+    "plant_air": {
+      "run_config": "A",
+      "avg_power": 255.06338623960798,
+      "avg_eff": 0.7362408615597124,
+      "saving_kwh": -284.2011546147313,
+      "saving_cost": -855.4454753903411,
+      "conf_pct": {
+        "A": 99.44444444444444,
+        "B": 0.4166666666666667,
+        "AB": 0.1388888888888889
+      },
+      "breakdown": {
+        "A": {
+          "hours": 716,
+          "avg_power": 254.66192325368903,
+          "avg_eff": 0.7367044741128003,
+          "avg_flow": 1368.2096642857657
+        },
+        "AB": {
+          "hours": 1,
+          "avg_power": 537.3490648248556,
+          "avg_eff": 0.35550634785881086,
+          "avg_flow": 1393.2527859732509
+        },
+        "B": {
+          "hours": 3,
+          "avg_power": 256.7839926838489,
+          "avg_eff": 0.7525035034563712,
+          "avg_flow": 1409.405162403981
+        }
+      },
+      "active_hours": 720
+    },
+    "refrig_unit": {
+      "avg_power": 266.40649920034,
+      "avg_cooling_power": 976.9463038756551,
+      "avg_cop": 3.6752601770247577,
+      "active_hours": 720
+    }
+  },
+  "2026-07": {
+    "cooling_pump": {
+      "run_config": "AB",
+      "avg_power": 1198.7236528984402,
+      "avg_eff": 0.8831578416620487,
+      "saving_kwh": -384.74593009464456,
+      "saving_cost": -1158.08524958488,
+      "conf_pct": {
+        "AB": 94.75806451612904,
+        "None": 4.973118279569892,
+        "ABC": 0.13440860215053765,
+        "BC": 0.13440860215053765
+      },
+      "breakdown": {
+        "AB": {
+          "hours": 705,
+          "avg_power": 1197.907009807,
+          "avg_eff": 0.8834245794095917,
+          "avg_flow": 7756.042503112597
+        },
+        "ABC": {
+          "hours": 1,
+          "avg_power": 1793.4627788051403,
+          "avg_eff": 0.6936513340550367,
+          "avg_flow": 8378.145774841309
+        },
+        "BC": {
+          "hours": 1,
+          "avg_power": 1179.717906457228,
+          "avg_eff": 0.8846142372511526,
+          "avg_flow": 7907.472394943237
+        },
+        "None": {
+          "hours": 37,
+          "avg_power": 0.0,
+          "avg_eff": 0.0,
+          "avg_flow": 0.0
+        }
+      },
+      "active_hours": 707
+    },
+    "plant_air": {
+      "run_config": "B",
+      "avg_power": 257.567894332431,
+      "avg_eff": 0.7252957596792811,
+      "saving_kwh": -3723.7813565720585,
+      "saving_cost": -11208.581883281895,
+      "conf_pct": {
+        "B": 70.96774193548387,
+        "A": 23.9247311827957,
+        "None": 4.973118279569892,
+        "AB": 0.13440860215053765
+      },
+      "breakdown": {
+        "A": {
+          "hours": 178,
+          "avg_power": 254.43983104957124,
+          "avg_eff": 0.6596057981296001,
+          "avg_flow": 1223.8844729273299
+        },
+        "AB": {
+          "hours": 1,
+          "avg_power": 533.7379503954328,
+          "avg_eff": 0.3354960220481777,
+          "avg_flow": 1305.9950222410262
+        },
+        "B": {
+          "hours": 528,
+          "avg_power": 258.09938146933644,
+          "avg_eff": 0.7481794962199522,
+          "avg_flow": 1408.4611290999137
+        },
+        "None": {
+          "hours": 37,
+          "avg_power": 0.0,
+          "avg_eff": 0.0,
+          "avg_flow": 0.0
+        }
+      },
+      "active_hours": 707
+    },
+    "refrig_unit": {
+      "avg_power": 263.6120021725322,
+      "avg_cooling_power": 974.5275903875628,
+      "avg_cop": 3.7001235569696775,
+      "active_hours": 707
+    }
+  },
+  "2026-08": {
+    "cooling_pump": null,
+    "plant_air": null,
+    "refrig_unit": null
+  },
+  "2026-09": {
+    "cooling_pump": null,
+    "plant_air": null,
+    "refrig_unit": null
+  },
+  "2026-10": {
+    "cooling_pump": null,
+    "plant_air": null,
+    "refrig_unit": null
+  },
+  "2026-11": {
+    "cooling_pump": null,
+    "plant_air": null,
+    "refrig_unit": null
+  },
+  "2026-12": {
+    "cooling_pump": null,
+    "plant_air": null,
+    "refrig_unit": null
+  }
+};
+
+        // App State
+        let activeEquipment = 'cooling_pump';
+        let activeMonth = '2026-01';
+        let electricityRate = 4.0;
+
+        // Chart References
+        let trendChartInstance = null;
+        let breakdownChartInstance = null;
+
+        // DOM elements
+        const navLinks = document.querySelectorAll('.nav-link');
+        const monthSelect = document.getElementById('month-select');
+        const costSlider = document.getElementById('cost-slider');
+        const rateValText = document.getElementById('rate-val');
+        const pageTitle = document.getElementById('page-title');
+        const pageSubtitle = document.getElementById('page-subtitle');
+        const rateControlGroup = document.getElementById('rate-control-group');
+        const themeToggle = document.getElementById('theme-toggle');
+        const themeText = document.getElementById('theme-text');
+        const themeIcon = themeToggle.querySelector('i');
+
+        // Initial setup
+        document.addEventListener('DOMContentLoaded', () => {
+            setupEventListeners();
+            renderDashboard();
+        });
+
+        function setupEventListeners() {
+            // Sidebar Navigation
+            navLinks.forEach(link => {
+                link.addEventListener('click', (e) => {
+                    navLinks.forEach(l => l.classList.remove('active'));
+                    link.classList.add('active');
+                    activeEquipment = link.getAttribute('data-target');
+                    
+                    // Update layout theme properties
+                    const root = document.documentElement;
+                    if (activeEquipment === 'cooling_pump') {
+                        root.style.setProperty('--accent-active', 'var(--cooling-primary)');
+                        root.style.setProperty('--accent-glow', 'var(--cooling-glow)');
+                        pageTitle.textContent = "Cooling Pump Performance";
+                        pageSubtitle.textContent = "Analysis and optimization opportunities for cooling water pumps.";
+                        rateControlGroup.style.display = 'flex';
+                    } else if (activeEquipment === 'plant_air') {
+                        root.style.setProperty('--accent-active', 'var(--air-primary)');
+                        root.style.setProperty('--accent-glow', 'var(--air-glow)');
+                        pageTitle.textContent = "Plant Air Performance";
+                        pageSubtitle.textContent = "Analysis and optimization opportunities for plant utility compressed air.";
+                        rateControlGroup.style.display = 'flex';
+                    } else {
+                        root.style.setProperty('--accent-active', 'var(--refrig-primary)');
+                        root.style.setProperty('--accent-glow', 'var(--refrig-glow)');
+                        pageTitle.textContent = "Refrigeration Unit Performance";
+                        pageSubtitle.textContent = "Performance analysis of chiller and refrigeration equipment.";
+                        rateControlGroup.style.display = 'none'; // Refrig unit doesn't calculate savings in this dashboard
+                    }
+
+                    renderDashboard();
+                });
+            });
+
+            // Month Select
+            monthSelect.addEventListener('change', (e) => {
+                activeMonth = e.target.value;
+                renderDashboard();
+            });
+
+            // Cost Slider
+            costSlider.addEventListener('input', (e) => {
+                electricityRate = parseFloat(e.target.value);
+                rateValText.textContent = electricityRate.toFixed(1) + " THB/kWh";
+                updateDynamicSavings();
+            });
+
+            // Light/Dark Theme Toggle
+            themeToggle.addEventListener('click', () => {
+                const currentTheme = document.body.getAttribute('data-theme');
+                if (currentTheme === 'light') {
+                    document.body.removeAttribute('data-theme');
+                    themeText.textContent = "Light Mode";
+                    themeIcon.className = "fa-solid fa-sun";
+                } else {
+                    document.body.setAttribute('data-theme', 'light');
+                    themeText.textContent = "Dark Mode";
+                    themeIcon.className = "fa-solid fa-moon";
+                }
+                renderCharts(); // Redraw charts with correct styling colors
+            });
+        }
+
+        function getChartColors() {
+            const isLight = document.body.getAttribute('data-theme') === 'light';
+            return {
+                text: isLight ? '#475569' : '#94a3b8',
+                grid: isLight ? 'rgba(15, 23, 42, 0.05)' : 'rgba(255, 255, 255, 0.05)',
+                cardBg: isLight ? '#f8fafc' : '#1e293b'
+            };
+        }
+
+        function renderDashboard() {
+            renderKPIs();
+            renderRecommendations();
+            renderCharts();
+            renderTable();
+        }
+
+        function renderKPIs() {
+            const kpiContainer = document.getElementById('kpi-container');
+            const data = DASHBOARD_DATA[activeMonth][activeEquipment];
+            kpiContainer.innerHTML = '';
+
+            if (!data) {
+                kpiContainer.innerHTML = `
+                    <div class="card" style="grid-column: 1 / -1; align-items: center; padding: 40px;">
+                        <i class="fa-solid fa-database" style="font-size: 3rem; color: var(--text-muted); margin-bottom: 10px;"></i>
+                        <h3>No Data Available</h3>
+                        <p style="color: var(--text-muted);">No records found for this equipment in ${activeMonth}.</p>
+                    </div>`;
+                return;
+            }
+
+            if (activeEquipment === 'cooling_pump') {
+                // Card 1: Power
+                kpiContainer.appendChild(createKPICard(
+                    'Average Power', 
+                    data.avg_power.toFixed(1) + ' kW', 
+                    'fa-solid fa-bolt', 
+                    'Combined average electrical power'
+                ));
+                // Card 2: Efficiency
+                kpiContainer.appendChild(createKPICard(
+                    'Average Efficiency', 
+                    (data.avg_eff * 100).toFixed(2) + ' %', 
+                    'fa-solid fa-gauge-high', 
+                    'Average overall pump efficiency'
+                ));
+                // Card 3: Run Configuration
+                kpiContainer.appendChild(createKPICard(
+                    'Primary Run Config', 
+                    data.run_config, 
+                    'fa-solid fa-circle-nodes', 
+                    'Most common configuration this month'
+                ));
+                // Card 4: Monthly Savings
+                const savingCostVal = data.saving_kwh * electricityRate;
+                kpiContainer.appendChild(createKPICard(
+                    'Est. Monthly Saving', 
+                    '<span class="saving-cost-placeholder">' + formatNumber(savingCostVal) + '</span> THB', 
+                    'fa-solid fa-piggy-bank', 
+                    `Based on saving ${formatNumber(data.saving_kwh.toFixed(0))} kWh by running AB`,
+                    'savings-card'
+                ));
+
+            } else if (activeEquipment === 'plant_air') {
+                // Card 1: Power
+                kpiContainer.appendChild(createKPICard(
+                    'Average Power', 
+                    data.avg_power.toFixed(1) + ' kW', 
+                    'fa-solid fa-bolt', 
+                    'Combined average electrical power'
+                ));
+                // Card 2: Efficiency
+                kpiContainer.appendChild(createKPICard(
+                    'Average Efficiency', 
+                    (data.avg_eff * 100).toFixed(2) + ' %', 
+                    'fa-solid fa-gauge-high', 
+                    'Average efficiency indicator'
+                ));
+                // Card 3: Run Config
+                kpiContainer.appendChild(createKPICard(
+                    'Primary Running Device', 
+                    data.run_config, 
+                    'fa-solid fa-compress', 
+                    'Most frequent device run configuration'
+                ));
+                // Card 4: Monthly Savings
+                const savingCostVal = data.saving_kwh * electricityRate;
+                kpiContainer.appendChild(createKPICard(
+                    'Est. Monthly Saving', 
+                    '<span class="saving-cost-placeholder">' + formatNumber(savingCostVal) + '</span> THB', 
+                    'fa-solid fa-piggy-bank', 
+                    `Based on saving ${formatNumber(data.saving_kwh.toFixed(0))} kWh by running A`,
+                    'savings-card'
+                ));
+
+            } else if (activeEquipment === 'refrig_unit') {
+                // Card 1: Power
+                kpiContainer.appendChild(createKPICard(
+                    'Electrical Power', 
+                    data.avg_power.toFixed(1) + ' kW', 
+                    'fa-solid fa-bolt', 
+                    'Average electrical power input'
+                ));
+                // Card 2: Cooling Power
+                kpiContainer.appendChild(createKPICard(
+                    'Cooling Power', 
+                    data.avg_cooling_power.toFixed(1) + ' kW', 
+                    'fa-solid fa-temperature-arrow-down', 
+                    'Average cooling thermal power generated'
+                ));
+                // Card 3: COP
+                kpiContainer.appendChild(createKPICard(
+                    'Average COP', 
+                    data.avg_cop.toFixed(3), 
+                    'fa-solid fa-gauge-simple-high', 
+                    'Coefficient of Performance (Cooling/Power)'
+                ));
+            }
+        }
+
+        function createKPICard(title, value, iconClass, subtext, customClass = '') {
+            const card = document.createElement('div');
+            card.className = `card ${customClass}`;
+            card.innerHTML = `
+                <div class="card-header">
+                    <span class="card-title">${title}</span>
+                    <div class="card-icon-bg">
+                        <i class="${iconClass}"></i>
+                    </div>
+                </div>
+                <div class="card-value">${value}</div>
+                <div class="card-subtext">${subtext}</div>
+            `;
+            return card;
+        }
+
+        function renderRecommendations() {
+            const recContainer = document.getElementById('rec-container');
+            const data = DASHBOARD_DATA[activeMonth][activeEquipment];
+            
+            if (!data || activeEquipment === 'refrig_unit') {
+                recContainer.style.display = 'none';
+                return;
+            }
+            recContainer.style.display = 'flex';
+
+            let recHtml = '';
+            
+            if (activeEquipment === 'cooling_pump') {
+                const isOptimal = data.run_config === 'AB';
+                const monthlySavingsKwh = data.saving_kwh;
+                const monthlySavingsCost = monthlySavingsKwh * electricityRate;
+                
+                // Calculate projected annual savings based on total savings across all active months (7 months) projected to 12
+                let total7MonthSavingsKwh = 0;
+                for (const m in DASHBOARD_DATA) {
+                    const cp = DASHBOARD_DATA[m].cooling_pump;
+                    if (cp) total7MonthSavingsKwh += cp.saving_kwh;
+                }
+                const annualSavingsKwh = total7MonthSavingsKwh * (12 / 7);
+                const annualSavingsCost = annualSavingsKwh * electricityRate;
+
+                recHtml = `
+                    <div class="rec-header">
+                        <i class="fa-solid fa-circle-check"></i>
+                        <span>ข้อเสนอแนะด้านการประหยัดพลังงาน (Cooling Pump Optimization)</span>
+                    </div>
+                    <div class="rec-body">
+                        จากการวิเคราะห์ข้อมูลกลุ่ม Cooling Pump พบว่าการเดินปั๊มแบบคู่ <strong>AB มีประสิทธิภาพเฉลี่ยสูงที่สุด (${(0.8831 * 100).toFixed(2)}%)</strong> 
+                        และประหยัดพลังงานมากที่สุด เมื่อเปรียบเทียบกับการเดินคู่อื่น (เช่น AC ที่มีประสิทธิภาพ 85.90% หรือ BC ที่มีประสิทธิภาพ 86.92%)
+                        <br><br>
+                        ${isOptimal ? 
+                            `<strong>status ปัจจุบันในเดือนนี้:</strong> คุณได้ใช้การรันปั๊มคู่ <strong>AB</strong> เป็นหลักเรียบร้อยแล้ว (ยอดเยี่ยม!)` : 
+                            `<strong>ข้อแนะนำในเดือนนี้:</strong> มีการเดินปั๊มคู่ <strong>${data.run_config}</strong> ซึ่งมีประสิทธิภาพต่ำกว่า หากเปลี่ยนมาเดินปั๊มคู่ <strong>AB</strong> จะช่วยลดกำลังไฟฟ้าลงได้เฉลี่ยประมาณ 18-32 kW ณ โหลดการใช้งานเดิม`
+                        }
+                    </div>
+                    <div class="rec-savings-grid">
+                        <div class="rec-saving-card">
+                            <label>เดือนนี้ประหยัดได้ (Potential Monthly Saving)</label>
+                            <div class="rec-saving-val"><span id="rec-monthly-saving-cost">${formatNumber(monthlySavingsCost)}</span> THB</div>
+                            <div class="card-subtext">ประหยัดพลังงาน ${formatNumber(monthlySavingsKwh.toFixed(0))} kWh</div>
+                        </div>
+                        <div class="rec-saving-card">
+                            <label>โครงการประหยัดต่อปี (Est. Annual Saving)</label>
+                            <div class="rec-saving-val" style="color: #3b82f6;"><span id="rec-annual-saving-cost">${formatNumber(annualSavingsCost)}</span> THB/year</div>
+                            <div class="card-subtext">ประหยัดพลังงานสะสม ~${formatNumber(annualSavingsKwh.toFixed(0))} kWh/year</div>
+                        </div>
+                    </div>
+                `;
+            } else if (activeEquipment === 'plant_air') {
+                const isOptimal = data.run_config === 'A';
+                const monthlySavingsKwh = data.saving_kwh;
+                const monthlySavingsCost = monthlySavingsKwh * electricityRate;
+
+                let total7MonthSavingsKwh = 0;
+                for (const m in DASHBOARD_DATA) {
+                    const pa = DASHBOARD_DATA[m].plant_air;
+                    if (pa) total7MonthSavingsKwh += pa.saving_kwh;
+                }
+                const annualSavingsKwh = total7MonthSavingsKwh * (12 / 7);
+                const annualSavingsCost = annualSavingsKwh * electricityRate;
+
+                recHtml = `
+                    <div class="rec-header">
+                        <i class="fa-solid fa-circle-check"></i>
+                        <span>ข้อเสนอแนะด้านการประหยัดพลังงาน (Plant Air Optimization)</span>
+                    </div>
+                    <div class="rec-body">
+                        จากการวิเคราะห์ข้อมูลกลุ่ม Plant Air พบว่าเครื่อง <strong>A มีประสิทธิภาพเฉลี่ยสูงที่สุด (${(0.7248 * 100).toFixed(2)}%)</strong> 
+                        และกินไฟฟ้าน้อยกว่าการรันเครื่อง B (เครื่อง B กินไฟฟ้าเฉลี่ย 261.70 kW ประสิทธิภาพเฉลี่ย 68.88% แม้ที่ระดับ flow ที่ต่ำกว่าเครื่อง A)
+                        <br><br>
+                        ${isOptimal ? 
+                            `<strong>status ปัจจุบันในเดือนนี้:</strong> คุณได้รันเครื่อง <strong>A</strong> เป็นหลักเรียบร้อยแล้ว` : 
+                            `<strong>ข้อแนะนำในเดือนนี้:</strong> โรงงานเดินเครื่อง <strong>B</strong> เป็นหลัก ซึ่งกินไฟสูงกว่า หากเปลี่ยนมาสลับเดินเครื่อง <strong>A</strong> แทนเป็นหลัก จะสามารถประหยัดพลังงานไฟฟ้าลงได้ประมาณ 13 kW ต่อชั่วโมงในการทำงาน`
+                        }
+                    </div>
+                    <div class="rec-savings-grid">
+                        <div class="rec-saving-card">
+                            <label>เดือนนี้ประหยัดได้ (Potential Monthly Saving)</label>
+                            <div class="rec-saving-val"><span id="rec-monthly-saving-cost">${formatNumber(monthlySavingsCost)}</span> THB</div>
+                            <div class="card-subtext">ประหยัดพลังงาน ${formatNumber(monthlySavingsKwh.toFixed(0))} kWh</div>
+                        </div>
+                        <div class="rec-saving-card">
+                            <label>โครงการประหยัดต่อปี (Est. Annual Saving)</label>
+                            <div class="rec-saving-val" style="color: #10b981;"><span id="rec-annual-saving-cost">${formatNumber(annualSavingsCost)}</span> THB/year</div>
+                            <div class="card-subtext">ประหยัดพลังงานสะสม ~${formatNumber(annualSavingsKwh.toFixed(0))} kWh/year</div>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            recContainer.innerHTML = recHtml;
+        }
+
+        // Fast update when cost slider is moved
+        function updateDynamicSavings() {
+            if (activeEquipment === 'refrig_unit') return;
+            const data = DASHBOARD_DATA[activeMonth][activeEquipment];
+            if (!data) return;
+
+            // 1. Update Monthly KPI Cost
+            const savingCostVal = data.saving_kwh * electricityRate;
+            const savingsKpi = document.querySelector('.savings-card .card-value');
+            if (savingsKpi) {
+                savingsKpi.innerHTML = `<span>${formatNumber(savingCostVal)}</span> THB`;
+            }
+
+            // 2. Update Recommendation costs
+            const monthlySavingPlaceholder = document.getElementById('rec-monthly-saving-cost');
+            const annualSavingPlaceholder = document.getElementById('rec-annual-saving-cost');
+            
+            if (monthlySavingPlaceholder && annualSavingPlaceholder) {
+                monthlySavingPlaceholder.textContent = formatNumber(data.saving_kwh * electricityRate);
+                
+                // Recalculate annual projected savings
+                let total7MonthSavingsKwh = 0;
+                for (const m in DASHBOARD_DATA) {
+                    const eqData = DASHBOARD_DATA[m][activeEquipment];
+                    if (eqData) total7MonthSavingsKwh += eqData.saving_kwh;
+                }
+                const annualSavingsKwh = total7MonthSavingsKwh * (12 / 7);
+                annualSavingPlaceholder.textContent = formatNumber(annualSavingsKwh * electricityRate);
+            }
+        }
+
+        function renderCharts() {
+            // Destroy existing chart instances to avoid overlap/memory leak
+            if (trendChartInstance) trendChartInstance.destroy();
+            if (breakdownChartInstance) breakdownChartInstance.destroy();
+
+            const data = DASHBOARD_DATA[activeMonth][activeEquipment];
+            const breakdownCard = document.getElementById('breakdown-chart-card');
+            
+            if (!data) {
+                breakdownCard.style.display = 'none';
+                return;
+            }
+
+            const colors = getChartColors();
+            Chart.defaults.color = colors.text;
+            Chart.defaults.borderColor = colors.grid;
+
+            // Get active months keys
+            const activeMonths = Object.keys(DASHBOARD_DATA).filter(m => DASHBOARD_DATA[m][activeEquipment] !== null);
+
+            // 1. RENDER TREND CHART (Line Chart)
+            const trendCtx = document.getElementById('trendChart').getContext('2d');
+            const trendTitle = document.getElementById('trend-chart-title');
+
+            if (activeEquipment === 'cooling_pump') {
+                trendTitle.textContent = "Monthly Power & Efficiency Trend (Cooling Pump)";
+                const powers = activeMonths.map(m => DASHBOARD_DATA[m].cooling_pump.avg_power);
+                const effs = activeMonths.map(m => DASHBOARD_DATA[m].cooling_pump.avg_eff * 100);
+
+                trendChartInstance = new Chart(trendCtx, {
+                    type: 'line',
+                    data: {
+                        labels: activeMonths.map(m => formatMonthLabel(m)),
+                        datasets: [
+                            {
+                                label: 'Avg Power (kW)',
+                                data: powers,
+                                borderColor: '#3b82f6',
+                                backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                                yAxisID: 'yPower',
+                                tension: 0.3,
+                                fill: true
+                            },
+                            {
+                                label: 'Avg Efficiency (%)',
+                                data: effs,
+                                borderColor: '#10b981',
+                                backgroundColor: 'transparent',
+                                yAxisID: 'yEff',
+                                tension: 0.3,
+                                borderDash: [5, 5]
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        interaction: { mode: 'index', intersect: false },
+                        scales: {
+                            yPower: {
+                                type: 'linear',
+                                display: true,
+                                position: 'left',
+                                title: { display: true, text: 'Power (kW)' },
+                                min: 1000,
+                                max: 1300
+                            },
+                            yEff: {
+                                type: 'linear',
+                                display: true,
+                                position: 'right',
+                                title: { display: true, text: 'Efficiency (%)' },
+                                min: 80,
+                                max: 92,
+                                grid: { drawOnChartArea: false }
+                            }
+                        }
+                    }
+                });
+            } else if (activeEquipment === 'plant_air') {
+                trendTitle.textContent = "Monthly Power & Efficiency Trend (Plant Air)";
+                const powers = activeMonths.map(m => DASHBOARD_DATA[m].plant_air.avg_power);
+                const effs = activeMonths.map(m => DASHBOARD_DATA[m].plant_air.avg_eff * 100);
+
+                trendChartInstance = new Chart(trendCtx, {
+                    type: 'line',
+                    data: {
+                        labels: activeMonths.map(m => formatMonthLabel(m)),
+                        datasets: [
+                            {
+                                label: 'Avg Power (kW)',
+                                data: powers,
+                                borderColor: '#10b981',
+                                backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                                yAxisID: 'yPower',
+                                tension: 0.3,
+                                fill: true
+                            },
+                            {
+                                label: 'Avg Efficiency (%)',
+                                data: effs,
+                                borderColor: '#3b82f6',
+                                backgroundColor: 'transparent',
+                                yAxisID: 'yEff',
+                                tension: 0.3,
+                                borderDash: [5, 5]
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        interaction: { mode: 'index', intersect: false },
+                        scales: {
+                            yPower: {
+                                type: 'linear',
+                                display: true,
+                                position: 'left',
+                                title: { display: true, text: 'Power (kW)' },
+                                min: 200,
+                                max: 300
+                            },
+                            yEff: {
+                                type: 'linear',
+                                display: true,
+                                position: 'right',
+                                title: { display: true, text: 'Efficiency (%)' },
+                                min: 60,
+                                max: 80,
+                                grid: { drawOnChartArea: false }
+                            }
+                        }
+                    }
+                });
+            } else if (activeEquipment === 'refrig_unit') {
+                trendTitle.textContent = "Monthly Power & COP Trend (Refrig. Unit)";
+                const elecPowers = activeMonths.map(m => DASHBOARD_DATA[m].refrig_unit.avg_power);
+                const coolingPowers = activeMonths.map(m => DASHBOARD_DATA[m].refrig_unit.avg_cooling_power);
+                const cops = activeMonths.map(m => DASHBOARD_DATA[m].refrig_unit.avg_cop);
+
+                trendChartInstance = new Chart(trendCtx, {
+                    type: 'line',
+                    data: {
+                        labels: activeMonths.map(m => formatMonthLabel(m)),
+                        datasets: [
+                            {
+                                label: 'Electrical Power (kW)',
+                                data: elecPowers,
+                                borderColor: '#f59e0b',
+                                backgroundColor: 'transparent',
+                                yAxisID: 'yPower',
+                                tension: 0.3
+                            },
+                            {
+                                label: 'Cooling Power (kW)',
+                                data: coolingPowers,
+                                borderColor: '#ef4444',
+                                backgroundColor: 'transparent',
+                                yAxisID: 'yPower',
+                                tension: 0.3
+                            },
+                            {
+                                label: 'COP',
+                                data: cops,
+                                borderColor: '#3b82f6',
+                                backgroundColor: 'rgba(59, 130, 246, 0.05)',
+                                yAxisID: 'yCop',
+                                tension: 0.3,
+                                fill: true,
+                                borderDash: [5, 5]
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        interaction: { mode: 'index', intersect: false },
+                        scales: {
+                            yPower: {
+                                type: 'linear',
+                                display: true,
+                                position: 'left',
+                                title: { display: true, text: 'Power (kW)' },
+                                min: 100,
+                                max: 1200
+                            },
+                            yCop: {
+                                type: 'linear',
+                                display: true,
+                                position: 'right',
+                                title: { display: true, text: 'COP' },
+                                min: 3.0,
+                                max: 4.5,
+                                grid: { drawOnChartArea: false }
+                            }
+                        }
+                    }
+                });
+            }
+
+            // 2. RENDER BREAKDOWN CHART (Doughnut Chart)
+            if (activeEquipment === 'refrig_unit') {
+                breakdownCard.style.display = 'none';
+            } else {
+                breakdownCard.style.display = 'flex';
+                const breakdownCtx = document.getElementById('breakdownChart').getContext('2d');
+                
+                // Get config percentage share data
+                const configPct = data.conf_pct;
+                const labels = Object.keys(configPct).filter(c => c !== 'None');
+                const shares = labels.map(c => configPct[c]);
+                
+                // Colors based on active theme
+                const chartColors = activeEquipment === 'cooling_pump' 
+                    ? ['#3b82f6', '#10b981', '#f59e0b', '#ef4444'] 
+                    : ['#10b981', '#3b82f6', '#f59e0b', '#ef4444'];
+
+                breakdownChartInstance = new Chart(breakdownCtx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            data: shares,
+                            backgroundColor: chartColors,
+                            borderColor: colors.cardBg,
+                            borderWidth: 2
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'bottom',
+                                labels: { padding: 15 }
+                            }
+                        },
+                        cutout: '65%'
+                    }
+                });
+            }
+        }
+
+        function renderTable() {
+            const tableElement = document.getElementById('data-table');
+            const tableTitle = document.getElementById('table-card-title');
+            const data = DASHBOARD_DATA[activeMonth][activeEquipment];
+            
+            tableElement.innerHTML = '';
+
+            if (!data) return;
+
+            if (activeEquipment === 'cooling_pump') {
+                tableTitle.textContent = `Pumps Configuration Breakdown - ${formatMonthLabel(activeMonth)}`;
+                tableElement.innerHTML = `
+                    <thead>
+                        <tr>
+                            <th>Configuration (การทำงานปั๊ม)</th>
+                            <th>Active Hours (จำนวนชั่วโมง)</th>
+                            <th>Runtime Share (%)</th>
+                            <th>Avg Power (kW)</th>
+                            <th>Avg Efficiency (%)</th>
+                            <th>Avg Flow (m³/h)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${Object.keys(data.breakdown).map(cfg => {
+                            const c = data.breakdown[cfg];
+                            const share = data.conf_pct[cfg] || 0;
+                            const isOpt = cfg === 'AB' ? 'style="color:#10b981;font-weight:600;"' : '';
+                            return `
+                                <tr>
+                                    <td class="highlight-text" ${isOpt}>${cfg} ${cfg === 'AB' ? ' (Recommended <i class="fa-solid fa-star"></i>)' : ''}</td>
+                                    <td>${c.hours} hrs</td>
+                                    <td>${share.toFixed(1)}%</td>
+                                    <td>${c.avg_power.toFixed(1)} kW</td>
+                                    <td>${(c.avg_eff * 100).toFixed(2)}%</td>
+                                    <td>${formatNumber(c.avg_flow.toFixed(0))} m³/h</td>
+                                </tr>
+                            `;
+                        }).join('')}
+                    </tbody>
+                `;
+            } else if (activeEquipment === 'plant_air') {
+                tableTitle.textContent = `Compressors Configuration Breakdown - ${formatMonthLabel(activeMonth)}`;
+                tableElement.innerHTML = `
+                    <thead>
+                        <tr>
+                            <th>Configuration (การทำงานเครื่อง)</th>
+                            <th>Active Hours (จำนวนชั่วโมง)</th>
+                            <th>Runtime Share (%)</th>
+                            <th>Avg Power (kW)</th>
+                            <th>Avg Efficiency (%)</th>
+                            <th>Avg Flow (Nm³/min)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${Object.keys(data.breakdown).map(cfg => {
+                            const c = data.breakdown[cfg];
+                            const share = data.conf_pct[cfg] || 0;
+                            const isOpt = cfg === 'A' ? 'style="color:#10b981;font-weight:600;"' : '';
+                            return `
+                                <tr>
+                                    <td class="highlight-text" ${isOpt}>${cfg} ${cfg === 'A' ? ' (Recommended <i class="fa-solid fa-star"></i>)' : ''}</td>
+                                    <td>${c.hours} hrs</td>
+                                    <td>${share.toFixed(1)}%</td>
+                                    <td>${c.avg_power.toFixed(1)} kW</td>
+                                    <td>${(c.avg_eff * 100).toFixed(2)}%</td>
+                                    <td>${formatNumber((c.avg_flow / 60).toFixed(1))} Nm³/min</td>
+                                </tr>
+                            `;
+                        }).join('')}
+                    </tbody>
+                `;
+            } else if (activeEquipment === 'refrig_unit') {
+                tableTitle.textContent = `Monthly Historic Summary - Refrigeration Unit`;
+                // Show historical monthly data in table for comparison
+                const monthsList = Object.keys(DASHBOARD_DATA).filter(m => DASHBOARD_DATA[m].refrig_unit !== null);
+                tableElement.innerHTML = `
+                    <thead>
+                        <tr>
+                            <th>Month (เดือน)</th>
+                            <th>Active Hours (ชั่วโมงการทำงาน)</th>
+                            <th>Avg Elec Power (kW)</th>
+                            <th>Avg Cooling Power (kW)</th>
+                            <th>Avg COP</th>
+                            <th>Refrig. Ton (RT)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${monthsList.map(m => {
+                            const row = DASHBOARD_DATA[m].refrig_unit;
+                            const highlight = m === activeMonth ? 'style="background:rgba(255,255,255,0.04); font-weight:600;"' : '';
+                            // 1 RT = 3.517 kW of cooling power
+                            const rt = row.avg_cooling_power / 3.517;
+                            return `
+                                <tr ${highlight}>
+                                    <td class="highlight-text">${formatMonthLabel(m)} ${m === activeMonth ? ' (Selected)' : ''}</td>
+                                    <td>${row.active_hours} hrs</td>
+                                    <td>${row.avg_power.toFixed(1)} kW</td>
+                                    <td>${row.avg_cooling_power.toFixed(1)} kW</td>
+                                    <td>${row.avg_cop.toFixed(3)}</td>
+                                    <td>${rt.toFixed(1)} RT</td>
+                                </tr>
+                            `;
+                        }).join('')}
+                    </tbody>
+                `;
+            }
+        }
+
+        // Helper: format 2026-01 to "January 2026"
+        function formatMonthLabel(mStr) {
+            const parts = mStr.split('-');
+            const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+            return months[parseInt(parts[1]) - 1] + ' ' + parts[0];
+        }
+
+        // Helper: format numbers with comma separator
+        function formatNumber(num) {
+            const parts = parseFloat(num).toFixed(0).toString().split(".");
+            parts[0] = parts[0].replace(/\B(?=(\d){3})+(?!\d)/g, ",");
+            return parts.join(".");
+        }
+    </script>
+</body>
+</html>
